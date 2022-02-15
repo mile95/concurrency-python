@@ -60,7 +60,7 @@ This script shows how to handle [race conditions](https://en.wikipedia.org/wiki/
 Example output from the script:
 
 ```
-$ python3 multithreaded-locks.py
+$ python3 multithreaded-locks.p`
 
 2022-02-11 08:20:14,856 - __main__ - INFO - Running race condition scenario!
 2022-02-11 08:20:14,857 - __main__ - INFO - Thread: 0 started foo_without_locks
@@ -94,4 +94,31 @@ When a thread reaches `LOCK.aqquire()`, and the lock is already acquired by anot
 
 Script name: `multithreaded-exceptions.py`, see [this](multithreaded-exceptions.py). 
 
-TODO!
+This script shows how to handle exceptions that occur in other threads than the `main thread`. It shows how one can "bubble" up exceptions from `worker-threads` to the `main-thread` so that one can act upon them. In this scenario, the `foo_with_exception` function will run in different threads, asynchronously. All this function does is to raise an `Exception`. 
+
+In this scenario, the threads get started in two different ways.
+1. Using the `ThreadPoolExecutor.map` (which was used in the previous scenarios).
+2. Using the `ThreadPoolExecutor.submit`
+
+The exception handling is a bit different, depending on if one uses `map` or `submit`.
+
+Output from the script
+
+```
+$ python3 multithreaded-exceptions.py
+
+2022-02-15 08:41:41,397 - __main__ - INFO - Starting thread 0-4 using executor.map...
+2022-02-15 08:41:41,400 - __main__ - INFO - Exception in thread id: 0
+2022-02-15 08:41:41,400 - __main__ - INFO - Starting thread 5-9 using executor.submit...
+2022-02-15 08:41:41,401 - __main__ - INFO - Exception in thread id: 5
+2022-02-15 08:41:41,401 - __main__ - INFO - Exception in thread id: 7
+2022-02-15 08:41:41,401 - __main__ - INFO - Exception in thread id: 6
+2022-02-15 08:41:41,401 - __main__ - INFO - Exception in thread id: 8
+2022-02-15 08:41:41,401 - __main__ - INFO - Exception in thread id: 9
+```
+
+As seen in the output above, `map` stops after one exception. If there is an exception, the whole executor stops, and you need to handle the exception in the worker function instead.
+
+The `submit` function does not stop the executor after one exception. Together with `concurrent.features.as_completed`, it is possible to iterate the finished `futures` and handle the exception in the `main-thread` instead of in the `worker-thread`.
+
+I prefer to use the `submit` function over the `map` to facilitate the Exception handling. The pro with using `map` is that it returns the results in the order they were submitted. Meanwhile, iterating over the `concurrent.futures.as_completed(future_to_thread)` won't guarantee the order.
